@@ -1,6 +1,4 @@
 #include <string>
-#include <cstring>
-#include <cstddef>
 #include <sstream>
 #include <filesystem>
 #include <sys/stat.h>
@@ -10,18 +8,10 @@
 bool EventProcess::get_program_name_from_pid(int pid, std::string &buffer) {
     /* Try to get program name by PID */
     std::stringstream ss;
-    ss << "/proc/" << pid << "/cmdline";
+    ss << "/proc/" << pid << "/exe";
 
-    std::ifstream file(ss.str());
-    if (!file.is_open())
-        return false;
-    file >> buffer;
-    file.close();
-
-    /* split the string by "^@" */
-    size_t pos = buffer.find('\0');
-    if (pos != std::string::npos)
-        buffer = buffer.substr(0, pos);
+    const std::filesystem::path path = std::filesystem::canonical(ss.str());
+    buffer = path.string();
 
     return true;
 }
@@ -61,31 +51,45 @@ bool EventProcess::get_file_path_from_fd(int fd, std::string &buffer) {
 }
 
 
-bool get_device_name(const std::string &mount_point, std::string &buffer) {
+#define major(dev) ((int)(((unsigned int) (dev) >> 8) & 0xff))
+#define minor(dev) ((int)((dev) & 0xff))
+
+
+bool EventProcess::get_device_path(const std::string &mount_point, std::string &buffer) {
     struct stat sb{};
     if (stat(mount_point.c_str(), &sb) == -1)
         return false;
 
-    buffer = std::to_string(sb.st_dev);
+    int major = major(sb.st_dev), minor = minor(sb.st_dev);
+    std::stringstream ss;
+    ss << "/dev/block/" << major << ":" << minor;
+
+    const std::filesystem::path path = std::filesystem::canonical(ss.str());
+
+    buffer = path.string();
     return true;
 }
 
 
 void EventProcess::determiner(fanotify_event_metadata *event) {
-    std::string path, process, device_name;
+    std::string path, process, device;
     int uid;
 
     get_file_path_from_fd(event->fd, path);
     get_program_name_from_pid(event->pid, process);
-    get_device_name(path, device_name);
+    get_device_path(path, device);
     get_program_owner_from_pid(event->pid, uid);
-    int type = event->mask & (FAN_ACCESS) ? 0 : 1; // 0 - read, 1 - write
+
+    int type = event->mask & (FAN_MODIFY) ? 1 : 0; // 0 - read, 1 - write
+    if (!type && only_writes)
+        goto close;
 
     // may be replaced with writing to a file or stream
     out << "Process: " << process << " (PID: " << event->pid << ", UID: " << uid << ")" << std::endl
-        << "File: " << path << " (on device: " << device_name << ")" << std::endl
+        << "File: " << path << " (on device: " << device << ")" << std::endl
         << "Type: " << (type == 0 ? "Read" : "Write") << std::endl;
 
+close:
     close(event->fd);
 }
 

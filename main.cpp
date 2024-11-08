@@ -11,9 +11,9 @@ class MountpointMonitor {
     pollfd fds{};
 
 public:
-    explicit MountpointMonitor(std::ostream& out = std::cout) {
+    explicit MountpointMonitor(std::ostream& out = std::cout, bool only_writes = false) {
         // passing device name from mountpoint scanner for full report
-        ep = new EventProcess(out);
+        ep = new EventProcess(out, only_writes);
 
         fanotify_fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_CONTENT, O_RDONLY);
         if (fanotify_fd == -1) {
@@ -82,6 +82,6 @@ public:
 
 
 int main() {
-    MountpointMonitor mm;
+    MountpointMonitor mm(std::cout, true);
     mm.infinite_poll();
 }
