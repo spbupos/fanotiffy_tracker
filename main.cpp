@@ -1,6 +1,6 @@
 #include <sys/fanotify.h>
 #include <poll.h>
-#include <vector>
+#include <set>
 #include <future>
 #include "headers.h"
 
@@ -11,8 +11,9 @@ class MountpointMonitor {
     pollfd fds{};
 
 public:
-    explicit MountpointMonitor(std::ostream& out = std::cout, bool only_writes = false) {
+    explicit MountpointMonitor(const std::string& filename, bool only_writes = false) {
         // passing device name from mountpoint scanner for full report
+        std::ofstream out(filename, std::ios::binary);
         ep = new EventProcess(out, only_writes);
 
         fanotify_fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_CONTENT, O_RDONLY);
@@ -25,6 +26,11 @@ public:
         fds.events = POLLIN;
 
         add_all_filesystems();
+        add_ignore_path(filename); // do no track self
+    }
+
+    void add_ignore_path(const std::string& path) {
+        ep->ignored_paths.insert(path);
     }
 
     void add_filesystem(const std::string& mount_point) const {
@@ -82,6 +88,7 @@ public:
 
 
 int main() {
-    MountpointMonitor mm(std::cout, true);
+    // test binary output
+    MountpointMonitor mm("/home/dinary/output.bin", true);
     mm.infinite_poll();
 }

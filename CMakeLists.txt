@@ -5,4 +5,5 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_executable(inotify_monitor main.cpp
         headers.h
-        events.cpp)
+        handler.cpp
+        determiners.cpp)
