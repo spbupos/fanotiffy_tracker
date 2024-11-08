@@ -2,20 +2,30 @@
 #define HEADERS_H
 
 #include <fcntl.h>
-#include <stdio.h>
+#include <iostream>
 #include <unistd.h>
 #include <linux/limits.h>
-#include <stdlib.h>
-#include <errno.h>
+#include <cstdlib>
+#include <cerrno>
 #include <linux/fanotify.h>
+#include <fstream>
+#include <utility>
 
 #define EVENT_SIZE (sizeof(struct fanotify_event_metadata))
 #define EVENT_BUF_LEN (1024 * (EVENT_SIZE + 16))
 
-int get_program_name_from_pid(int pid, char *buffer, size_t buffer_size);
-int get_program_owner_from_pid(int pid, int *buffer);
-int get_file_path_from_fd(int fd, char *buffer, size_t buffer_size);
+class EventProcess {
+    std::ostream& out;
 
-void handle_events(int fanotify_fd);
+    static bool get_program_name_from_pid(int pid, std::string& buffer);
+    static bool get_program_owner_from_pid(int pid, int& buffer);
+    static bool get_file_path_from_fd(int fd, std::string& buffer);
+    void determiner(fanotify_event_metadata *event);
+
+public:
+    // passing device name from mountpoint scanner for full report
+    explicit EventProcess(std::ostream& out = std::cout) : out(out) {}
+    void handle_events(int fanotify_fd);
+};
 
 #endif //HEADERS_H
