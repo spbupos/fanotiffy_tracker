@@ -11,9 +11,7 @@ class MountpointMonitor {
     pollfd fds{};
 
 public:
-    explicit MountpointMonitor(const std::string& filename, bool only_writes = false) {
-        // passing device name from mountpoint scanner for full report
-        std::ofstream out(filename, std::ios::binary);
+    explicit MountpointMonitor(std::ostream& out, bool only_writes = false) {
         ep = new EventProcess(out, only_writes);
 
         fanotify_fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_CONTENT, O_RDONLY);
@@ -26,11 +24,6 @@ public:
         fds.events = POLLIN;
 
         add_all_filesystems();
-        add_ignore_path(filename); // do no track self
-    }
-
-    void add_ignore_path(const std::string& path) {
-        ep->ignored_paths.insert(path);
     }
 
     void add_filesystem(const std::string& mount_point) const {
@@ -89,6 +82,6 @@ public:
 
 int main() {
     // test binary output
-    MountpointMonitor mm("/home/dinary/output.bin", true);
+    MountpointMonitor mm(std::cout, true);
     mm.infinite_poll();
 }

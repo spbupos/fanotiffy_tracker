@@ -49,9 +49,15 @@ bool Determiners::get_file_path_from_fd(int fd, std::string &buffer) {
 
     std::stringstream ss;
     ss << "/proc/self/fd/" << fd;
-    const std::filesystem::path path = std::filesystem::canonical(ss.str());
+    // PID may be killed before we get it's name
+    try {
+        const std::filesystem::path path = std::filesystem::canonical(ss.str());
+        buffer = path.string();
+    } catch (std::filesystem::filesystem_error&) {
+        buffer = "(killed)";
+        return false;
+    }
 
-    buffer = path.string();
     return true;
 }
 
@@ -70,21 +76,36 @@ bool Determiners::get_device_path(const std::string &mount_point, std::string &b
     return true;
 }
 
-bool Determiners::get_file_content(const std::string &path, FilePart &buffer) {
+bool Determiners::get_file_content(const std::string &path, std::string &buffer) {
     /* open file in binary mode, determine it's length
      * if file is bigger than 100 bytes, read 100 bytes in middle of file
      * if file size is between 20 and 100 bytes, read 20 bytes in middle of file
      * if file is smaller than 20 bytes, read all bytes
      * starting pos = (file size - reading length) / 2
      */
-    buffer.len = std::filesystem::file_size(path);
+    size_t len;
+    try {
+        len = std::filesystem::file_size(path);
+    } catch (std::filesystem::filesystem_error&) {
+        buffer = "(deleted)";
+        return false;
+    }
+    if (len == 0) {
+        buffer = "";
+        return true;
+    }
     std::ifstream file(path, std::ios::binary);
     if (!file.is_open())
         return false;
 
-    int reading = buffer.len > 100 ? 100 : (buffer.len > 20 ? 20 : buffer.len);
-    file.seekg(static_cast<std::streamoff>(buffer.len - reading) / 2);
-    file.read(reinterpret_cast<char *>(buffer.bytes), reading);
+    int reading = len > 100 ? 100 : (len > 20 ? 20 : len);
+    unsigned char subbufer[100];
+    file.seekg(static_cast<std::streamoff>(len - reading) / 2);
+    file.read(reinterpret_cast<std::istream::char_type *>(subbufer), reading);
+    file.close();
+
+    // encode bytes from subbufer to base64 string
+    buffer = base64_encode(subbufer, reading);
 
     file.close();
     return true;
