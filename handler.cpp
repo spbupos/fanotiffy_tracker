@@ -10,7 +10,7 @@
  */
 
 void EventProcess::determiner(fanotify_event_metadata *event, std::ostream& lout) const {
-    std::string path, process, device, base64_content = "(deleted)";
+    std::string path, process, device, base64_content;
     int uid, type = INT_MAX;
     time_t timestamp = time(nullptr);
 

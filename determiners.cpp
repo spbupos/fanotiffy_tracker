@@ -89,6 +89,7 @@ bool Determiners::get_file_content(const std::string &path, std::string &buffer)
     try {
         len = std::filesystem::file_size(path);
     } catch (std::filesystem::filesystem_error&) {
+        buffer = "(deleted)";
         return false;
     }
     if (len == 0) {
