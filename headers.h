@@ -36,7 +36,7 @@ class EventProcess : public Determiners {
     std::ostream& out;
     bool only_writes;
 
-    void determiner(fanotify_event_metadata *event);
+    void determiner(fanotify_event_metadata *event, std::ostream& lout) const;
 
 public:
     // passing device name from mountpoint scanner for full report

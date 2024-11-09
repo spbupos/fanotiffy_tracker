@@ -54,7 +54,7 @@ bool Determiners::get_file_path_from_fd(int fd, std::string &buffer) {
         const std::filesystem::path path = std::filesystem::canonical(ss.str());
         buffer = path.string();
     } catch (std::filesystem::filesystem_error&) {
-        buffer = "(killed)";
+        buffer = std::string("(killed)");
         return false;
     }
 
@@ -63,8 +63,10 @@ bool Determiners::get_file_path_from_fd(int fd, std::string &buffer) {
 
 bool Determiners::get_device_path(const std::string &mount_point, std::string &buffer) {
     struct stat sb{};
-    if (stat(mount_point.c_str(), &sb) == -1)
+    if (stat(mount_point.c_str(), &sb) == -1) {
+        buffer = "(killed)";
         return false;
+    }
 
     int major_dev = major(sb.st_dev), minor_dev = minor(sb.st_dev);
     std::stringstream ss;
@@ -87,11 +89,10 @@ bool Determiners::get_file_content(const std::string &path, std::string &buffer)
     try {
         len = std::filesystem::file_size(path);
     } catch (std::filesystem::filesystem_error&) {
-        buffer = "(deleted)";
         return false;
     }
     if (len == 0) {
-        buffer = "";
+        buffer = "(empty)";
         return true;
     }
     std::ifstream file(path, std::ios::binary);
@@ -106,7 +107,5 @@ bool Determiners::get_file_content(const std::string &path, std::string &buffer)
 
     // encode bytes from subbufer to base64 string
     buffer = base64_encode(subbufer, reading);
-
-    file.close();
     return true;
 }

@@ -28,7 +28,8 @@ public:
 
     void add_filesystem(const std::string& mount_point) const {
         if (fanotify_mark(fanotify_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
-            FAN_ACCESS | FAN_MODIFY | FAN_EVENT_ON_CHILD, AT_FDCWD, mount_point.c_str())) {
+            FAN_ACCESS | FAN_MODIFY | FAN_EVENT_ON_CHILD,
+            AT_FDCWD, mount_point.c_str())) {
             perror("fanotify_mark");
             exit(EXIT_FAILURE);
         }
@@ -70,8 +71,17 @@ public:
     }
 
     void infinite_poll() {
-        while (true)
+        while (true) {
             single_poll();
+            /* WARNING: current version of this program takes
+             * a lot of CPU on reading file content, so it's
+             * a temporary solution to sleep for 50ms. But
+             * without file content reading it takes 0% of CPU,
+             * with it - 5-50%. See handler.cpp:21 if you want
+             * tp disable content reading.
+             */
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
     }
 
     ~MountpointMonitor() {
@@ -81,7 +91,6 @@ public:
 
 
 int main() {
-    // test binary output
     MountpointMonitor mm(std::cout, true);
     mm.infinite_poll();
 }
