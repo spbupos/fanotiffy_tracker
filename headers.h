@@ -16,7 +16,7 @@
 #define EVENT_BUF_LEN (1024 * (EVENT_SIZE + 16))
 #define REPORT_MAX_SIZE 712
 
-#define major(dev) ((int)(((unsigned int) (dev) >> 8) & 0xff))
+#define major(dev) ((int)(((unsigned int) (dev) >> 8)))
 #define minor(dev) ((int)((dev) & 0xff))
 
 std::string base64_encode(unsigned char const* bytes_to_encode, unsigned int in_len);
